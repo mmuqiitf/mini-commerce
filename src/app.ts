@@ -1,11 +1,15 @@
-import express from 'express';
+import express, { NextFunction, Response, Request } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 
-import { routeNotFound, errorHandler } from './middlewares/errorHandler';
+import {
+  routeNotFound,
+  errorHandler,
+  AppError,
+} from './middlewares/errorHandler';
 import routes from './routes';
 
 const app = express();
@@ -19,7 +23,7 @@ app.use(
     max: 100, // limit each IP to 100 requests per windowMs
     standardHeaders: true,
     legacyHeaders: false,
-  })
+  }),
 );
 
 // Performance & utility middleware
@@ -33,6 +37,10 @@ app.use('/api', routes);
 
 // Error handling
 app.use(routeNotFound);
-app.use(errorHandler);
+app.use(
+  (err: Error | AppError, req: Request, res: Response, next: NextFunction) => {
+    errorHandler(err, req, res, next);
+  },
+);
 
 export default app;
