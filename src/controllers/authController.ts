@@ -106,13 +106,13 @@ export const authController = {
       }
 
       if (!user) {
-        res.status(401).json({ message: 'Invalid credentials' });
+        res.status(401).json({ message: 'Invalid email or phone' });
         return;
       }
 
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        res.status(401).json({ message: 'Invalid credentials' });
+        res.status(401).json({ message: 'Invalid password' });
         return;
       }
 

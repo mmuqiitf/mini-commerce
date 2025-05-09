@@ -2,19 +2,16 @@
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(50) NOT NULL UNIQUE,
-  email VARCHAR(100) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  first_name VARCHAR(50),
-  last_name VARCHAR(50),
-  phone VARCHAR(20),
-  role ENUM('customer', 'admin') DEFAULT 'customer',
-  auth_type ENUM('local', 'google', 'facebook') DEFAULT 'local',
-  auth_id VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE INDEX auth_unique (auth_type, auth_id)
+  `id` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `name` varchar(50) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`),
+  UNIQUE KEY `phone` (`phone`)
 );
 
 -- Categories table
@@ -41,16 +38,6 @@ CREATE TABLE IF NOT EXISTS products (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
-);
-
--- Product Images table
-CREATE TABLE IF NOT EXISTS product_images (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  product_id INT NOT NULL,
-  image_url VARCHAR(255) NOT NULL,
-  is_primary BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 -- Addresses table
@@ -119,25 +106,3 @@ CREATE TABLE IF NOT EXISTS api_requests (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
-
--- Stored procedure for generating unique product codes with running numbers
-CREATE PROCEDURE IF NOT EXISTS generate_product_code(OUT new_code VARCHAR(50))
-BEGIN
-  DECLARE year_prefix VARCHAR(4);
-  DECLARE month_prefix VARCHAR(2);
-  DECLARE day_prefix VARCHAR(2);
-  DECLARE next_sequence INT;
-  
-  -- Get current date components
-  SET year_prefix = DATE_FORMAT(NOW(), '%Y');
-  SET month_prefix = DATE_FORMAT(NOW(), '%m');
-  SET day_prefix = DATE_FORMAT(NOW(), '%d');
-  
-  -- Find the next sequence number for today's date
-  SELECT COALESCE(MAX(sequence_number), 0) + 1 INTO next_sequence
-  FROM products
-  WHERE code LIKE CONCAT('P-', year_prefix, month_prefix, day_prefix, '-%');
-  
-  -- Generate the code in format P-YYYYMMDD-XXXX where XXXX is the sequence
-  SET new_code = CONCAT('P-', year_prefix, month_prefix, day_prefix, '-', LPAD(next_sequence, 4, '0'));
-END;
