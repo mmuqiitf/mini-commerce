@@ -1,4 +1,4 @@
-import express, { NextFunction, Response, Request } from 'express';
+import express, { Response, Request } from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -36,11 +36,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api', routes);
 
 // Error handling
-app.use(routeNotFound);
-app.use(
-  (err: Error | AppError, req: Request, res: Response, next: NextFunction) => {
-    errorHandler(err, req, res, next);
-  },
-);
+app.use((req: Request, res: Response) => {
+  routeNotFound(req, res);
+});
+app.use((err: Error | AppError, req: Request, res: Response) => {
+  errorHandler(err, req, res);
+});
 
 export default app;

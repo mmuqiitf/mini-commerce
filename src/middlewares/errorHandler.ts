@@ -16,26 +16,42 @@ export class AppError extends Error {
   }
 }
 
-export const routeNotFound = (req: Request, res: Response) => {
-  res.status(404).json({
+export const routeNotFound = (req: Request, res: Response): Response => {
+  return res.status(404).json({
     status: 'error',
     message: `Route ${req.originalUrl} not found`,
   });
 };
 
+// Define a type for route handlers to avoid 'any'
+type RouteHandler = (
+  req: Request,
+  res: Response,
+  next?: NextFunction,
+) => Promise<unknown>;
+
 // Async handler wrapper to avoid try/catch blocks in route handlers
-export const asyncHandler = (fn: Function) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+export const asyncHandler = (fn: RouteHandler) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };
+
+// Type for the error response object
+interface ErrorResponse {
+  status: string;
+  requestId: string;
+  message: string;
+  error?: unknown;
+  stack?: string;
+  actualMessage?: string;
+}
 
 export const errorHandler = (
   err: AppError | Error,
   req: Request,
   res: Response,
-  next: NextFunction,
-) => {
+): Response => {
   // Generate request ID for error tracking
   const requestId = uuidv4();
 
@@ -55,9 +71,10 @@ export const errorHandler = (
   const isOperational = 'isOperational' in err ? err.isOperational : false;
 
   // Base response
-  const errorResponse: any = {
+  const errorResponse: ErrorResponse = {
     status: 'error',
     requestId,
+    message: '',
   };
 
   // Operational, trusted errors: send message to client
