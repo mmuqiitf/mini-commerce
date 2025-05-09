@@ -3,7 +3,7 @@ import app from './app';
 import config from './config/config';
 import logger from './utils/logger';
 import { testConnection } from './database/connection';
-import { runMigrations, isDatabaseReady } from './database/migrations';
+import { isDatabaseReady } from './database/migrations';
 import schedulerService from './services/schedulerService';
 
 // Uncaught exception handler

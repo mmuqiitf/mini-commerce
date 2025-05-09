@@ -185,7 +185,6 @@ export const orderController = {
       next(error);
     }
   },
-
   /**
    * Cancel an order
    * This endpoint uses transactions to ensure data consistency when:
@@ -231,6 +230,42 @@ export const orderController = {
         message: 'Order cancelled successfully',
       });
     } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Get customer with the most purchases
+   * This endpoint returns report data about the top purchasers
+   */
+  async getTopCustomers(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 1;
+
+      // Validate limit parameter
+      if (isNaN(limit) || limit < 1 || limit > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'Limit must be a number between 1 and 100',
+        });
+        return;
+      }
+
+      const topCustomers = await orderRepository.getTopCustomers(limit);
+
+      res.status(200).json({
+        success: true,
+        count: topCustomers.length,
+        data: topCustomers,
+      });
+    } catch (error) {
+      logger.error(`Error getting top customers: ${error}`);
       next(error);
     }
   },

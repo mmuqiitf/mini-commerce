@@ -94,20 +94,6 @@ CREATE TABLE IF NOT EXISTS task_schedule (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- API Requests Log table (for tracking external API integrations)
-CREATE TABLE IF NOT EXISTS api_requests (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  endpoint VARCHAR(255) NOT NULL,
-  method ENUM('GET', 'POST', 'PUT', 'DELETE', 'PATCH') NOT NULL,
-  request_data JSON,
-  response_data JSON,
-  status_code INT,
-  user_id INT,
-  ip_address VARCHAR(45),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
 -- Product Code Lock table (for preventing race conditions in product code generation)
 CREATE TABLE IF NOT EXISTS product_code_lock (
   id INT PRIMARY KEY,

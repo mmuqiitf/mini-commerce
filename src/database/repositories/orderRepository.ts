@@ -254,7 +254,6 @@ const orderRepository = {
 
     return result.affectedRows > 0;
   },
-
   /**
    * Cancel an order
    * This uses a transaction to update the order status and restore product quantities
@@ -295,6 +294,37 @@ const orderRepository = {
 
       return updateResult.affectedRows > 0;
     });
+  },
+
+  /**
+   * Get customer with the most purchases
+   * @param limit Number of top customers to return (default: 1)
+   * @returns Array of top customers with their order statistics
+   */
+  async getTopCustomers(limit = 1): Promise<any[]> {
+    const sql = `
+      SELECT 
+        u.id,
+        u.name,
+        u.email,
+        COUNT(o.id) AS order_count,
+        SUM(o.total_amount) AS total_spent,
+        MIN(o.created_at) AS first_purchase_date,
+        MAX(o.created_at) AS last_purchase_date
+      FROM 
+        users u
+      INNER JOIN 
+        orders o ON u.id = o.user_id
+      WHERE 
+        o.status != '${OrderStatus.CANCELLED}'
+      GROUP BY 
+        u.id, u.name, u.email
+      ORDER BY 
+        order_count DESC, total_spent DESC
+      LIMIT ?
+    `;
+
+    return executeQuery<RowDataPacket[]>(sql, [limit]);
   },
 };
 

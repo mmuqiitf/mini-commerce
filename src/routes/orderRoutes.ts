@@ -27,6 +27,14 @@ router.post(
 );
 
 /**
+ * @route GET /orders/reports/top-customers
+ * @desc Get customer(s) with the most purchases
+ * @access Private
+ * @query {number} limit - Number of top customers to return (default: 1)
+ */
+router.get('/reports/top-customers', orderController.getTopCustomers);
+
+/**
  * @route GET /orders
  * @desc Get all orders for the authenticated user
  * @access Private
