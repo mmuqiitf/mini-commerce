@@ -13,6 +13,7 @@ interface Config {
     port: number;
     connectionLimit: number;
   };
+  jwtSecret: string;
 }
 
 const config: Config = {
@@ -26,6 +27,8 @@ const config: Config = {
     port: Number(process.env.DB_PORT) || 3306,
     connectionLimit: Number(process.env.DB_CONNECTION_LIMIT) || 10,
   },
+  jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
 };
 
 export default config;
+export const JWT_SECRET = config.jwtSecret;

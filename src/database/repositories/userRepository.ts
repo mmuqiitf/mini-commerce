@@ -1,134 +1,61 @@
-import { executeQuery, executeTransaction } from '../connection';
-import { RowDataPacket, ResultSetHeader, Connection } from 'mysql2/promise';
+import { executeQuery } from '../connection';
+import { User } from '../../models/user';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
-// User interface
-export interface User extends RowDataPacket {
-  id: number;
-  username: string;
-  email: string;
-  password: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  role: 'customer' | 'admin';
-  auth_type: 'local' | 'google' | 'facebook';
-  auth_id: string | null;
-  created_at: Date;
-  updated_at: Date;
-}
-
-// CreateUser interface - for user creation
-export interface CreateUser {
-  username: string;
-  email: string;
-  password: string;
-  first_name?: string;
-  last_name?: string;
-  phone?: string;
-  role?: 'customer' | 'admin';
-  auth_type?: 'local' | 'google' | 'facebook';
-  auth_id?: string;
-}
-
-// User repository class
-class UserRepository {
-  // Create a new user
-  async create(userData: CreateUser): Promise<User> {
-    const sql = `
-      INSERT INTO users (
-        username, email, password, first_name, last_name, 
-        phone, role, auth_type, auth_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const params = [
-      userData.username,
-      userData.email,
-      userData.password,
-      userData.first_name || null,
-      userData.last_name || null,
-      userData.phone || null,
-      userData.role || 'customer',
-      userData.auth_type || 'local',
-      userData.auth_id || null,
-    ];
-
-    const result = await executeQuery<ResultSetHeader>(sql, params);
-
-    return this.findById(result.insertId) as Promise<User>;
-  }
-
-  // Find user by ID
-  async findById(id: number): Promise<User | null> {
-    const sql = 'SELECT * FROM users WHERE id = ? LIMIT 1';
-    const results = await executeQuery<User[]>(sql, [id]);
-
-    return results.length > 0 ? results[0] : null;
-  }
-
-  // Find user by email
+export const userRepository = {
   async findByEmail(email: string): Promise<User | null> {
-    const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
-    const results = await executeQuery<User[]>(sql, [email]);
+    const query = 'SELECT * FROM users WHERE email = ? LIMIT 1';
+    const params = [email];
+    const rows = await executeQuery<User[] & RowDataPacket[]>(query, params);
+    return rows[0] || null;
+  },
 
-    return results.length > 0 ? results[0] : null;
-  }
+  async findByPhone(phone: string): Promise<User | null> {
+    const query = 'SELECT * FROM users WHERE phone = ? LIMIT 1';
+    const params = [phone];
+    const rows = await executeQuery<User[] & RowDataPacket[]>(query, params);
+    return rows[0] || null;
+  },
 
-  // Find user by username
-  async findByUsername(username: string): Promise<User | null> {
-    const sql = 'SELECT * FROM users WHERE username = ? LIMIT 1';
-    const results = await executeQuery<User[]>(sql, [username]);
+  async create(
+    userData: Omit<User, 'id' | 'created_at' | 'updated_at'>,
+  ): Promise<User> {
+    const { email, phone, password, name } = userData;
+    if (!email && !phone) {
+      throw new Error(
+        'Either email or phone must be provided to create a user.',
+      );
+    }
+    const userEmail = email || null;
+    const userPhone = phone || null;
 
-    return results.length > 0 ? results[0] : null;
-  }
+    const insertQuery =
+      'INSERT INTO users (email, phone, password, name) VALUES (?, ?, ?, ?)';
+    const insertParams = [userEmail, userPhone, password, name];
+    const insertResult = await executeQuery<ResultSetHeader>(
+      insertQuery,
+      insertParams,
+    );
 
-  // Find user by auth provider ID
-  async findByAuthId(authType: string, authId: string): Promise<User | null> {
-    const sql =
-      'SELECT * FROM users WHERE auth_type = ? AND auth_id = ? LIMIT 1';
-    const results = await executeQuery<User[]>(sql, [authType, authId]);
+    if (insertResult.affectedRows === 0) {
+      throw new Error('User creation failed, no rows affected.');
+    }
+    if (insertResult.insertId === 0) {
+      throw new Error(
+        "User creation failed, no insertId returned. Ensure 'id' is AUTO_INCREMENT.",
+      );
+    }
 
-    return results.length > 0 ? results[0] : null;
-  }
+    const selectQuery = 'SELECT * FROM users WHERE id = ?';
+    const selectParams = [insertResult.insertId];
+    const newUserResult = await executeQuery<User[] & RowDataPacket[]>(
+      selectQuery,
+      selectParams,
+    );
 
-  // Update user
-  async update(
-    id: number,
-    userData: Partial<CreateUser>,
-  ): Promise<User | null> {
-    // Build dynamic SET clause and params
-    const entries = Object.entries(userData);
-
-    if (entries.length === 0) return this.findById(id);
-
-    const setClause = entries.map(([key]) => `${key} = ?`).join(', ');
-    const params = [...entries.map(([_, value]) => value), id];
-
-    const sql = `UPDATE users SET ${setClause} WHERE id = ?`;
-    await executeQuery<ResultSetHeader>(sql, params);
-
-    return this.findById(id);
-  }
-
-  // Delete user
-  async delete(id: number): Promise<boolean> {
-    const sql = 'DELETE FROM users WHERE id = ?';
-    const result = await executeQuery<ResultSetHeader>(sql, [id]);
-
-    return result.affectedRows > 0;
-  }
-
-  // Get all users
-  async findAll(limit = 50, offset = 0): Promise<User[]> {
-    const sql = 'SELECT * FROM users LIMIT ? OFFSET ?';
-    return executeQuery<User[]>(sql, [limit, offset]);
-  }
-
-  // Find users by role
-  async findByRole(role: string, limit = 50, offset = 0): Promise<User[]> {
-    const sql = 'SELECT * FROM users WHERE role = ? LIMIT ? OFFSET ?';
-    return executeQuery<User[]>(sql, [role, limit, offset]);
-  }
-}
-
-export default new UserRepository();
+    if (!newUserResult || newUserResult.length === 0) {
+      throw new Error('Failed to fetch user after creation');
+    }
+    return newUserResult[0];
+  },
+};
