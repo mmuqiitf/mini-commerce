@@ -6,7 +6,7 @@ export const registrationValidationRules = [
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters long'),
   // Conditional validation for email or phone
-  body().custom((value, { req }) => {
+  body().custom((_, { req }) => {
     const { email, phone } = req.body;
     if (!email && !phone) {
       throw new Error('Either email or phone must be provided');
@@ -37,7 +37,7 @@ export const registrationValidationRules = [
 export const loginValidationRules = [
   body('password').notEmpty().withMessage('Password is required'),
   // Conditional validation for email or phone
-  body().custom((value, { req }) => {
+  body().custom((_, { req }) => {
     const { email, phone } = req.body;
     if (!email && !phone) {
       throw new Error('Either email or phone must be provided for login');

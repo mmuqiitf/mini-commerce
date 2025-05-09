@@ -7,7 +7,7 @@ import {
   LoginRequestBody,
   AuthResponse,
 } from '../types/auth';
-import { User } from '../models/user'; // Assuming you have a User model
+import { User } from '../models/user';
 import { JWT_SECRET } from '../config/config';
 
 export const authController = {
@@ -69,12 +69,7 @@ export const authController = {
 
       res.status(201).json({
         token,
-        user: {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          phone: newUser.phone,
-        },
+        user: newUser,
       });
     } catch (error) {
       next(error);
@@ -127,12 +122,7 @@ export const authController = {
 
       res.status(200).json({
         token,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-        },
+        user,
       });
     } catch (error) {
       next(error);

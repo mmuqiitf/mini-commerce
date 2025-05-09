@@ -1,3 +1,5 @@
+import { User } from '@/models/user';
+
 export interface RegisterRequestBody {
   email?: string;
   phone?: string;
@@ -13,10 +15,5 @@ export interface LoginRequestBody {
 
 export interface AuthResponse {
   token: string;
-  user: {
-    id: number;
-    name: string;
-    email?: string | null;
-    phone?: string | null;
-  };
+  user: User;
 }
