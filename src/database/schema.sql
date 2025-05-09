@@ -106,3 +106,10 @@ CREATE TABLE IF NOT EXISTS api_requests (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- Product Code Lock table (for preventing race conditions in product code generation)
+CREATE TABLE IF NOT EXISTS product_code_lock (
+  id INT PRIMARY KEY,
+  last_sequence INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

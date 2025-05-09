@@ -9,7 +9,7 @@ export interface Product extends RowDataPacket {
   name: string;
   description: string | null;
   price: number;
-  stock_quantity: number;
+  quantity: number;
   category_id: number | null;
   created_at: Date;
   updated_at: Date;
@@ -21,40 +21,66 @@ export interface CreateProduct {
   name: string;
   description?: string;
   price: number;
-  stock_quantity?: number;
+  quantity?: number;
   category_id?: number;
 }
 
 // Product repository class
 class ProductRepository {
-  // Generate unique product code with running number
+  // Generate unique product code with running number and handle race conditions
   async generateProductCode(): Promise<string> {
-    try {
-      // Get the highest sequence number across all products
-      const sequenceSql = `
-        SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(code, '-', -1) AS SIGNED)), 0) + 1 AS next_sequence
-        FROM products
-        WHERE code LIKE 'P-%'
-      `;
+    // Use a transaction to prevent race conditions
+    return executeTransaction(async (connection) => {
+      try {
+        // Create a lock table if it doesn't exist
+        // This will be used as a mutex lock for product code generation
+        await connection.execute(`
+          CREATE TABLE IF NOT EXISTS product_code_lock (
+            id INT PRIMARY KEY,
+            last_sequence INT NOT NULL DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          )
+        `);
 
-      const sequenceResult = await executeQuery<
-        Array<{ next_sequence: number }> & RowDataPacket[]
-      >(sequenceSql, []);
+        // Insert initial record if it doesn't exist
+        await connection.execute(`
+          INSERT IGNORE INTO product_code_lock (id, last_sequence) VALUES (1, 0)
+        `);
 
-      // Get next sequence number, default to 1 if no products exist
-      const nextSequence = sequenceResult[0]?.next_sequence || 1;
+        // Get and update the next sequence with row-level locking
+        const [lockResult] = await connection.execute(`
+          SELECT last_sequence
+          FROM product_code_lock
+          WHERE id = 1
+          FOR UPDATE
+        `);
 
-      // Format the sequence number with leading zeros (P-0001)
-      const sequenceFormatted = String(nextSequence).padStart(4, '0');
+        // Get current sequence
+        const currentSequence = (lockResult as any)[0]?.last_sequence || 0;
+        const nextSequence = currentSequence + 1;
 
-      // Return the formatted product code
-      return `P-${sequenceFormatted}`;
-    } catch (error) {
-      console.error('Error generating product code:', error);
-      // In case of any error, generate a fallback code
-      const timestamp = Date.now();
-      return `P-${timestamp.toString().substring(timestamp.toString().length - 4)}`;
-    }
+        // Update the sequence in the lock table
+        await connection.execute(
+          `
+          UPDATE product_code_lock
+          SET last_sequence = ?
+          WHERE id = 1
+        `,
+          [nextSequence],
+        );
+
+        // Format the sequence number with leading zeros (P-0001)
+        const sequenceFormatted = String(nextSequence).padStart(4, '0');
+
+        // Return the formatted product code
+        return `P-${sequenceFormatted}`;
+      } catch (error) {
+        console.error('Error generating product code:', error);
+        // In case of any error, generate a fallback code
+        const timestamp = Date.now();
+        return `P-${timestamp.toString().substring(timestamp.toString().length - 4)}`;
+      }
+    });
   }
   // Create a new product with transaction to handle race conditions
   async create(productData: CreateProduct): Promise<Product> {
@@ -70,11 +96,10 @@ class ProductRepository {
         const sequencePart = productCode.split('-')[1];
         sequenceNumber = parseInt(sequencePart, 10);
       }
-
       const sql = `
         INSERT INTO products (
           code, sequence_number, name, description, price, 
-          stock_quantity, category_id
+          quantity, category_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
 
@@ -84,7 +109,7 @@ class ProductRepository {
         productData.name,
         productData.description || null,
         productData.price,
-        productData.stock_quantity || 0,
+        productData.quantity || 0,
         productData.category_id || null,
       ];
 
@@ -149,11 +174,11 @@ class ProductRepository {
       }
 
       const product = products[0];
-      const newStock = Math.max(0, product.stock_quantity + quantity);
+      const newStock = Math.max(0, product.quantity + quantity);
 
       // Update stock
       await connection.execute(
-        'UPDATE products SET stock_quantity = ? WHERE id = ?',
+        'UPDATE products SET quantity = ? WHERE id = ?',
         [newStock, id],
       );
 
@@ -212,7 +237,7 @@ class ProductRepository {
     // Safely parse limit and offset as integers
     const safeLimit = parseInt(String(limit), 10);
     const safeOffset = parseInt(String(offset), 10);
-    const sql = `SELECT * FROM products WHERE stock_quantity < ? LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+    const sql = `SELECT * FROM products WHERE quantity < ? LIMIT ${safeLimit} OFFSET ${safeOffset}`;
     return executeQuery<Product[]>(sql, [threshold]);
   }
 }

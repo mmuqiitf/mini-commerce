@@ -18,7 +18,7 @@ export const productValidationRules = {
       .isFloat({ gt: 0 })
       .withMessage('Price must be a positive number'),
 
-    body('stock_quantity')
+    body('quantity')
       .optional()
       .isInt({ min: 0 })
       .withMessage('Stock quantity must be a non-negative integer'),
@@ -58,7 +58,7 @@ export const productValidationRules = {
       .isFloat({ gt: 0 })
       .withMessage('Price must be a positive number'),
 
-    body('stock_quantity')
+    body('quantity')
       .optional()
       .isInt({ min: 0 })
       .withMessage('Stock quantity must be a non-negative integer'),
