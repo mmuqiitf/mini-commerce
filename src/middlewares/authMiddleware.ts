@@ -34,7 +34,7 @@ export const protect = async (
       // }
       req.user = { id: decoded.id, name: decoded.name } as User; // Or however your User model is structured from the token
 
-      next();
+      return next(); // Add return here to fix the code path
     } catch (error) {
       console.error(error);
       return res.status(401).json({ message: 'Not authorized, token failed' });

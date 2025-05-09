@@ -3,6 +3,7 @@ import itemRoutes from './itemRoutes';
 import authRoutes from './authRoutes';
 import categoryRoutes from './categoryRoutes';
 import addressRoutes from './addressRoutes';
+import productRoutes from './productRoutes';
 
 const router = Router();
 
@@ -11,5 +12,6 @@ router.use('/items', itemRoutes);
 router.use('/auth', authRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/addresses', addressRoutes);
+router.use('/products', productRoutes);
 
 export default router;

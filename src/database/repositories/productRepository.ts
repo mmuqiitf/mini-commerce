@@ -30,35 +30,32 @@ class ProductRepository {
   // Generate unique product code with running number
   async generateProductCode(): Promise<string> {
     try {
-      const sql =
-        'CALL generate_product_code(@new_code); SELECT @new_code as code;';
-      const result = await executeQuery<any[]>(sql);
-      return result[1][0].code;
-    } catch (error) {
-      // Fallback to manual code generation if stored procedure fails
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-
-      // Get the highest sequence number for today
+      // Get the highest sequence number across all products
       const sequenceSql = `
-        SELECT COALESCE(MAX(sequence_number), 0) + 1 AS next_sequence
+        SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(code, '-', -1) AS SIGNED)), 0) + 1 AS next_sequence
         FROM products
-        WHERE code LIKE ?
+        WHERE code LIKE 'P-%'
       `;
-      const datePrefix = `P-${year}${month}${day}`;
-      const sequenceResult = await executeQuery<any[]>(sequenceSql, [
-        `${datePrefix}-%`,
-      ]);
 
-      const nextSequence = sequenceResult[0].next_sequence || 1;
+      const sequenceResult = await executeQuery<
+        Array<{ next_sequence: number }> & RowDataPacket[]
+      >(sequenceSql, []);
+
+      // Get next sequence number, default to 1 if no products exist
+      const nextSequence = sequenceResult[0]?.next_sequence || 1;
+
+      // Format the sequence number with leading zeros (P-0001)
       const sequenceFormatted = String(nextSequence).padStart(4, '0');
 
-      return `${datePrefix}-${sequenceFormatted}`;
+      // Return the formatted product code
+      return `P-${sequenceFormatted}`;
+    } catch (error) {
+      console.error('Error generating product code:', error);
+      // In case of any error, generate a fallback code
+      const timestamp = Date.now();
+      return `P-${timestamp.toString().substring(timestamp.toString().length - 4)}`;
     }
   }
-
   // Create a new product with transaction to handle race conditions
   async create(productData: CreateProduct): Promise<Product> {
     return executeTransaction(async (connection) => {
@@ -69,8 +66,8 @@ class ProductRepository {
       if (!productCode) {
         productCode = await this.generateProductCode();
 
-        // Extract sequence number from code (e.g., P-20250509-0001 -> 1)
-        const sequencePart = productCode.split('-')[2];
+        // Extract sequence number from code (e.g., P-0001 -> 1)
+        const sequencePart = productCode.split('-')[1];
         sequenceNumber = parseInt(sequencePart, 10);
       }
 
@@ -177,27 +174,33 @@ class ProductRepository {
 
     return result.affectedRows > 0;
   }
-
   // Get all products
   async findAll(limit = 50, offset = 0): Promise<Product[]> {
-    const sql = 'SELECT * FROM products LIMIT ? OFFSET ?';
-    return executeQuery<Product[]>(sql, [limit, offset]);
+    // For LIMIT and OFFSET, we need to escape them manually as integers
+    // as MySQL doesn't support placeholders for these clauses
+    const sql = `SELECT * FROM products LIMIT ${parseInt(String(limit), 10)} OFFSET ${parseInt(String(offset), 10)}`;
+    return executeQuery<Product[]>(sql, []);
   }
-
   // Find products by category
   async findByCategory(
     categoryId: number,
     limit = 50,
     offset = 0,
   ): Promise<Product[]> {
-    const sql = 'SELECT * FROM products WHERE category_id = ? LIMIT ? OFFSET ?';
-    return executeQuery<Product[]>(sql, [categoryId, limit, offset]);
+    // Safely parse limit and offset as integers
+    const safeLimit = parseInt(String(limit), 10);
+    const safeOffset = parseInt(String(offset), 10);
+    const sql = `SELECT * FROM products WHERE category_id = ? LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+    return executeQuery<Product[]>(sql, [categoryId]);
   }
 
   // Search products by name
   async searchByName(name: string, limit = 50, offset = 0): Promise<Product[]> {
-    const sql = 'SELECT * FROM products WHERE name LIKE ? LIMIT ? OFFSET ?';
-    return executeQuery<Product[]>(sql, [`%${name}%`, limit, offset]);
+    // Safely parse limit and offset as integers
+    const safeLimit = parseInt(String(limit), 10);
+    const safeOffset = parseInt(String(offset), 10);
+    const sql = `SELECT * FROM products WHERE name LIKE ? LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+    return executeQuery<Product[]>(sql, [`%${name}%`]);
   }
 
   // Get products with low stock
@@ -206,9 +209,11 @@ class ProductRepository {
     limit = 50,
     offset = 0,
   ): Promise<Product[]> {
-    const sql =
-      'SELECT * FROM products WHERE stock_quantity < ? LIMIT ? OFFSET ?';
-    return executeQuery<Product[]>(sql, [threshold, limit, offset]);
+    // Safely parse limit and offset as integers
+    const safeLimit = parseInt(String(limit), 10);
+    const safeOffset = parseInt(String(offset), 10);
+    const sql = `SELECT * FROM products WHERE stock_quantity < ? LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+    return executeQuery<Product[]>(sql, [threshold]);
   }
 }
 
