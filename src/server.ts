@@ -4,6 +4,7 @@ import config from './config/config';
 import logger from './utils/logger';
 import { testConnection } from './database/connection';
 import { runMigrations, isDatabaseReady } from './database/migrations';
+import schedulerService from './services/schedulerService';
 
 // Uncaught exception handler
 process.on('uncaughtException', (err) => {
@@ -36,13 +37,25 @@ let server: Server;
       // await runMigrations();
     } else {
       logger.info('Database already initialized');
-    }
-
-    // Start the server
+    } // Start the server
     server = app.listen(config.port, () => {
       logger.info(
         `Server running in ${config.nodeEnv} mode on port ${config.port}`,
       );
+      // Start the low stock scheduler based on configuration
+      if (
+        config.notifications?.enableScheduled ||
+        config.nodeEnv === 'production'
+      ) {
+        schedulerService.startLowStockScheduler(
+          config.notifications?.cronSchedule,
+        );
+        logger.info('Scheduled low stock notifications initialized');
+      } else {
+        logger.info(
+          'Low stock scheduler not started (disabled in config or in development mode)',
+        );
+      }
     });
   } catch (error) {
     logger.error(
@@ -56,6 +69,10 @@ let server: Server;
 process.on('unhandledRejection', (err: Error) => {
   logger.error('UNHANDLED REJECTION! 💥 Shutting down...');
   logger.error(err.name, err.message);
+
+  // Stop the scheduler if it's running
+  schedulerService.stopLowStockScheduler();
+
   // Graceful shutdown - check if server is available
   if (server) {
     server.close(() => {
@@ -71,6 +88,11 @@ process.on('unhandledRejection', (err: Error) => {
 // SIGTERM handler
 process.on('SIGTERM', () => {
   logger.info('👋 SIGTERM RECEIVED. Shutting down gracefully');
+
+  // Stop the scheduler if it's running
+  schedulerService.stopLowStockScheduler();
+  logger.info('Stopped scheduler jobs');
+
   if (server) {
     server.close(() => {
       logger.info('💥 Process terminated!');

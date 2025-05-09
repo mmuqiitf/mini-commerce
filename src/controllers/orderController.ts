@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 import { CreateOrderInput, OrderStatus } from '../models/order';
 import logger from '../utils/logger';
-import orderRepository from '@/database/repositories/orderRepository';
+import orderRepository from '../database/repositories/orderRepository';
 
 export const orderController = {
   /**
