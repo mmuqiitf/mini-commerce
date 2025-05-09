@@ -16,7 +16,10 @@ A lightweight e-commerce backend API built with Node.js, Express, TypeScript, an
 1. Clone the repository
 2. Install dependencies: `npm install`
 3. Copy `.env.example` to `.env` and update the values
-4. Start the development server: `npm run dev`
+4. Import the SQL schema from `mini_commerce.sql` into your MySQL database
+5. Start the development server: `npm run dev`
+6. Access the API at `http://localhost:3000`
+7. Username : admin@example.com Password : password
 
 ## Low Stock Notification System
 
