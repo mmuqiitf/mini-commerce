@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS addresses (
 -- Orders table
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  number VARCHAR(50) NOT NULL UNIQUE,
   user_id INT NOT NULL,
   address_id INT NOT NULL,
   status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
@@ -109,6 +110,12 @@ CREATE TABLE IF NOT EXISTS api_requests (
 
 -- Product Code Lock table (for preventing race conditions in product code generation)
 CREATE TABLE IF NOT EXISTS product_code_lock (
+  id INT PRIMARY KEY,
+  last_sequence INT NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS order_code_lock (
   id INT PRIMARY KEY,
   last_sequence INT NOT NULL DEFAULT 0,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
