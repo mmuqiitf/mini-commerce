@@ -49,7 +49,7 @@ interface ErrorResponse {
 
 export const errorHandler = (
   err: AppError | Error,
-  req: Request,
+  _req: Request, // Added underscore to mark as intentionally unused
   res: Response,
 ): Response => {
   // Generate request ID for error tracking

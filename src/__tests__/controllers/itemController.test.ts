@@ -2,9 +2,7 @@ import { Request, Response } from 'express';
 import {
   createItem,
   getItems,
-  getItemById,
-  updateItem,
-  deleteItem,
+  // Removing unused imports
 } from '../../controllers/itemController';
 import { items } from '../../models/item';
 import { AppError } from '../../middlewares/errorHandler';
